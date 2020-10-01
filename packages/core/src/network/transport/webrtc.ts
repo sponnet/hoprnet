@@ -10,7 +10,6 @@ const log = debug('hopr-core:transport')
 const error = debug('hopr-core:transport:error')
 const verbose = debug('hopr-core:verbose:transport:webrtc')
 
-
 class WebRTCUpgrader {
   private _stunServers?: {
     iceServers?: {
@@ -36,7 +35,6 @@ class WebRTCUpgrader {
   }
 
   private _connect(initiator: boolean) {
-    console.log(`inside _connect`)
     const channel = new SimplePeer({
       wrtc,
       initiator,

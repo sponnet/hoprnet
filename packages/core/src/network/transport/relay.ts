@@ -123,12 +123,27 @@ class Relay {
         continue
       }
 
-      return new RelayConnection({
+      const channel = this._webRTCUpgrader?.upgradeOutbound()
+
+      const conn = new RelayConnection({
         stream,
         self: this._peerInfo.id,
         counterparty: destination,
-        webRTC: this._webRTCUpgrader?.upgradeOutbound(),
+        webRTC: channel,
       })
+
+      // @TODO add overwritable stream
+      channel.on(`connect`, () => {
+        console.log(`connection`)
+        //conn.close()
+        //resolve(channel)
+      })
+
+      channel.on(`error`, () => {
+        console.log(`error`)
+      })
+
+      return conn
     }
 
     throw Error(
@@ -147,14 +162,20 @@ class Relay {
       return
     }
 
-    this.connHandler?.(
-      new RelayConnection({
-        stream,
-        self: this._peerInfo.id,
-        counterparty,
-        webRTC: this._webRTCUpgrader?.upgradeInbound(),
-      })
-    )
+    const channel = this._webRTCUpgrader?.upgradeInbound()
+
+    const relayConn = new RelayConnection({
+      stream,
+      self: this._peerInfo.id,
+      counterparty,
+      webRTC: channel,
+    })
+
+    channel.on('connect', () => {
+      console.log(`counterparty connect`)
+    })
+
+    this.connHandler?.(relayConn)
   }
 
   private async connectToRelay(relay: PeerInfo, options?: DialOptions): Promise<Connection> {

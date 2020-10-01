@@ -758,81 +758,81 @@ describe('should create a socket and connect to it', function () {
   //   await Promise.all([relay.stop(), sender.stop(), counterparty.stop()])
   // })
 
-  it('should set up a relayed connection and exchange messages', async function () {
-    const relay = await generateNode({ id: 2, ipv4: true })
+  // it('should set up a relayed connection and exchange messages', async function () {
+  //   const relay = await generateNode({ id: 2, ipv4: true })
 
-    const [sender, counterparty] = await Promise.all([
-      generateNode({ id: 0, ipv4: true, useWebRTC: false }, relay.peerInfo),
-      generateNode({ id: 1, ipv4: true, useWebRTC: false }, relay.peerInfo),
-    ])
+  //   const [sender, counterparty] = await Promise.all([
+  //     generateNode({ id: 0, ipv4: true, useWebRTC: false }, relay.peerInfo),
+  //     generateNode({ id: 1, ipv4: true, useWebRTC: false }, relay.peerInfo),
+  //   ])
 
-    connectionHelper([sender, relay])
-    connectionHelper([relay, counterparty])
+  //   connectionHelper([sender, relay])
+  //   connectionHelper([relay, counterparty])
 
-    const INVALID_PORT = 8758
+  //   const INVALID_PORT = 8758
 
-    const { stream }: { stream: Connection } = await sender.dialProtocol(
-      Multiaddr(`/ip4/127.0.0.1/tcp/${INVALID_PORT}/p2p/${counterparty.peerInfo.id.toB58String()}`),
-      TEST_PROTOCOL
-    )
+  //   const { stream }: { stream: Connection } = await sender.dialProtocol(
+  //     Multiaddr(`/ip4/127.0.0.1/tcp/${INVALID_PORT}/p2p/${counterparty.peerInfo.id.toB58String()}`),
+  //     TEST_PROTOCOL
+  //   )
 
-    const testMessage = new TextEncoder().encode('12356')
+  //   const testMessage = new TextEncoder().encode('12356')
 
-    let msgReceived = false
-    await pipe(
-      /* prettier-ignore */
-      [testMessage],
-      stream,
-      async (source: AsyncIterable<Uint8Array>) => {
-        for await (const msg of source) {
-          console.log(`receiving relayed connection. message`, new TextDecoder().decode(msg.slice()))
-          if (u8aEquals(msg.slice(), testMessage)) {
-            msgReceived = true
+  //   let msgReceived = false
+  //   await pipe(
+  //     /* prettier-ignore */
+  //     [testMessage],
+  //     stream,
+  //     async (source: AsyncIterable<Uint8Array>) => {
+  //       for await (const msg of source) {
+  //         console.log(`receiving relayed connection. message`, new TextDecoder().decode(msg.slice()))
+  //         if (u8aEquals(msg.slice(), testMessage)) {
+  //           msgReceived = true
 
-            return
-          }
-        }
-      }
-    )
+  //           return
+  //         }
+  //       }
+  //     }
+  //   )
 
-    stream.close()
+  //   stream.close()
 
-    assert(msgReceived, `Message must be received by counterparty`)
+  //   assert(msgReceived, `Message must be received by counterparty`)
 
-    // await Promise.all([
-    //   sender.hangUp(new PeerInfo(counterparty.peerInfo.id)),
-    //   counterparty.hangUp(new PeerInfo(sender.peerInfo.id)),
-    // ])
+  //   // await Promise.all([
+  //   //   sender.hangUp(new PeerInfo(counterparty.peerInfo.id)),
+  //   //   counterparty.hangUp(new PeerInfo(sender.peerInfo.id)),
+  //   // ])
 
-    // // Try with abort controller
-    // const abort = new AbortController()
+  //   // // Try with abort controller
+  //   // const abort = new AbortController()
 
-    // setTimeout(() => setImmediate(() => abort.abort()), 300)
+  //   // setTimeout(() => setImmediate(() => abort.abort()), 300)
 
-    // try {
-    //   await sender.dialProtocol(
-    //     Multiaddr(`/ip4/127.0.0.1/tcp/${INVALID_PORT}/p2p/${counterparty.peerInfo.id.toB58String()}`),
-    //     TEST_PROTOCOL,
-    //     { signal: abort.signal }
-    //   )
-    // } catch (err) {
-    //   if (err.type !== 'aborted') {
-    //     throw err
-    //   }
-    // }
+  //   // try {
+  //   //   await sender.dialProtocol(
+  //   //     Multiaddr(`/ip4/127.0.0.1/tcp/${INVALID_PORT}/p2p/${counterparty.peerInfo.id.toB58String()}`),
+  //   //     TEST_PROTOCOL,
+  //   //     { signal: abort.signal }
+  //   //   )
+  //   // } catch (err) {
+  //   //   if (err.type !== 'aborted') {
+  //   //     throw err
+  //   //   }
+  //   // }
 
-    // await Promise.all([
-    //   sender.hangUp(new PeerInfo(counterparty.peerInfo.id)),
-    //   counterparty.hangUp(new PeerInfo(sender.peerInfo.id)),
-    // ])
+  //   // await Promise.all([
+  //   //   sender.hangUp(new PeerInfo(counterparty.peerInfo.id)),
+  //   //   counterparty.hangUp(new PeerInfo(sender.peerInfo.id)),
+  //   // ])
 
-    await Promise.all([
-      /* prettier-ignore */
-      sender.stop(),
-      counterparty.stop(),
-      relay.stop(),
-    ])
-  })
+  //   await Promise.all([
+  //     /* prettier-ignore */
+  //     sender.stop(),
+  //     counterparty.stop(),
+  //     relay.stop(),
+  //   ])
+  // })
 
   // it('should set up a relayed connection, exchange messages, then reconnect with a different address and exchange messages', async function () {
   //   const relay = await generateNode({ id: 2, ipv4: true, ipv6: true })
