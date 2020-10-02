@@ -23,8 +23,8 @@ class RelayConnection implements MultiaddrConnection {
   public localAddr: Multiaddr
   public remoteAddr: Multiaddr
 
-  public source: AsyncIterable<Uint8Array>
-  public sink: (source: AsyncIterable<Uint8Array>) => Promise<void>
+  public source: AsyncGenerator<Uint8Array, Uint8Array | void>
+  public sink: (source: AsyncGenerator<Uint8Array, Uint8Array | void>) => Promise<void>
 
   public conn: Stream
 
@@ -65,8 +65,8 @@ class RelayConnection implements MultiaddrConnection {
 
       while (true) {
         let result: {
-          done: boolean
-          value: BL
+          done?: boolean
+          value?: Uint8Array | void
         } = await Promise.race([
           // prettier-ignore
           // @ts-ignore
@@ -75,7 +75,7 @@ class RelayConnection implements MultiaddrConnection {
         ])
 
         if (result.value != null) {
-          const received = result.value.slice()
+          const received = (result.value as Uint8Array).slice()
 
           if (u8aEquals(received.slice(0, 1), RELAY_PAYLOAD_PREFIX)) {
             if (result.done) {
@@ -154,44 +154,7 @@ class RelayConnection implements MultiaddrConnection {
 
           let webRTCstream: AsyncGenerator<Uint8Array, void, unknown>
           if (this.webRTC != null) {
-            webRTCstream = async function* (this: RelayConnection) {
-              let defer = Defer<DeferredPromise<any>>()
-              let waiting = false
-              const webRTCmessages: Uint8Array[] = []
-              let done = false
-              function onSignal(msg: any) {
-                webRTCmessages.push(new TextEncoder().encode(JSON.stringify(msg)))
-                if (waiting) {
-                  waiting = false
-                  defer.resolve(Defer<DeferredPromise<any>>())
-                }
-              }
-              this.webRTC.on('signal', onSignal)
-
-              this.webRTC.once('connect', () => {
-                done = true
-                this.webRTC.removeListener('signal', onSignal)
-                defer.resolve()
-              })
-
-              while (!done) {
-                while (webRTCmessages.length > 0) {
-                  yield webRTCmessages.shift()
-                }
-
-                if (done) {
-                  break
-                }
-
-                waiting = true
-
-                defer = await defer.promise
-
-                if (done) {
-                  break
-                }
-              }
-            }.call(this)
+            webRTCstream = this.getWebRTCStream()
           }
 
           let webRTCPromise: Promise<void>
@@ -205,6 +168,7 @@ class RelayConnection implements MultiaddrConnection {
               if (webRTCPromise == null) {
                 webRTCPromise = webRTCstream.next().then(webRTCSourceFunction)
               }
+
               await Promise.race([
                 // prettier-ignore
                 // @ts-ignore
@@ -250,8 +214,13 @@ class RelayConnection implements MultiaddrConnection {
               }
             } else if (webRTCresolved && webRTCmsg != null) {
               webRTCresolved = false
-              // @ts-ignore
-              yield new BL([RELAY_WEBRTC_PREFIX, webRTCmsg])
+              if (promiseDone || (streamDone && webRTCdone)) {
+                // @ts-ignore
+                return new BL([RELAY_WEBRTC_PREFIX, webRTCmsg])
+              } else {
+                // @ts-ignore
+                yield new BL([RELAY_WEBRTC_PREFIX, webRTCmsg])
+              }
 
               webRTCPromise = webRTCstream.next().then(webRTCSourceFunction)
             } else if (promiseDone || (streamDone && webRTCdone)) {
@@ -282,6 +251,48 @@ class RelayConnection implements MultiaddrConnection {
     this.timeline.close = Date.now()
 
     return Promise.resolve()
+  }
+
+  private getWebRTCStream() {
+    return async function* (this: RelayConnection) {
+      let defer = Defer<DeferredPromise<any>>()
+      let waiting = false
+      const webRTCmessages: Uint8Array[] = []
+      let done = false
+
+      function onSignal(msg: any) {
+        webRTCmessages.push(new TextEncoder().encode(JSON.stringify(msg)))
+        if (waiting) {
+          waiting = false
+          defer.resolve(Defer<DeferredPromise<any>>())
+        }
+      }
+      this.webRTC.on('signal', onSignal)
+
+      this.webRTC.once('connect', () => {
+        done = true
+        this.webRTC.removeListener('signal', onSignal)
+        defer.resolve()
+      })
+
+      while (!done) {
+        while (webRTCmessages.length > 0) {
+          yield webRTCmessages.shift()
+        }
+
+        if (done) {
+          break
+        }
+
+        waiting = true
+
+        defer = await defer.promise
+
+        if (done) {
+          break
+        }
+      }
+    }.call(this)
   }
 }
 

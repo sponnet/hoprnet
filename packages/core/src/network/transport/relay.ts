@@ -132,16 +132,18 @@ class Relay {
         webRTC: channel,
       })
 
-      // @TODO add overwritable stream
-      channel.on(`connect`, () => {
-        console.log(`connection`)
-        //conn.close()
-        //resolve(channel)
+      const result = new Promise(resolve => {
+        channel.on(`connect`, () => {
+          console.log(`connection`)
+          //conn.close()
+          resolve(channel)
+        })
+  
+        channel.on(`error`, () => {
+          console.log(`error`)
+        })
       })
-
-      channel.on(`error`, () => {
-        console.log(`error`)
-      })
+      
 
       return conn
     }

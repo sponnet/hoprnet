@@ -7,8 +7,8 @@ import { EventEmitter } from 'events'
 import { Instance as SimplePeer } from 'simple-peer'
 
 interface PairType<T> {
-  sink(source: AsyncIterable<T>): Promise<void>
-  source: AsyncIterable<T>
+  sink(source: AsyncGenerator<T, T | void>): Promise<void>
+  source: AsyncGenerator<T, T | void>
 }
 
 const TIMEOUT_LOWER_BOUND = 450

@@ -1,9 +1,7 @@
-import { AbortError } from 'abortable-iterator'
 import SimplePeer from 'simple-peer'
 import debug from 'debug'
 // @ts-ignore
 import wrtc = require('wrtc')
-import { WEBRTC_TIMEOUT } from './constants'
 import type Multiaddr from 'multiaddr'
 
 const log = debug('hopr-core:transport')
@@ -34,7 +32,7 @@ class WebRTCUpgrader {
     return this._connect(false)
   }
 
-  private _connect(initiator: boolean) {
+  private _connect(initiator: boolean, signal?: AbortSignal) {
     const channel = new SimplePeer({
       wrtc,
       initiator,
@@ -44,46 +42,46 @@ class WebRTCUpgrader {
       config: this._stunServers,
     })
 
-    // const onTimeout = () => {
-    //   verbose('Timeout upgrading to webrtc', channel.address())
-    //   channel.destroy()
-    // }
+    const onTimeout = () => {
+      verbose('Timeout upgrading to webrtc', channel.address())
+      channel.destroy()
+    }
 
-    // const done = async (err?: Error) => {
-    //   verbose('Completed')
+    const onAbort = () => {
+      channel.destroy()
+      verbose('abort')
+    }
 
-    //   channel.removeListener('iceTimeout', onTimeout)
-    //   channel.removeListener('connect', onConnect)
-    //   channel.removeListener('error', onError)
+    const onConnect = (): void => {
+      verbose('connected')
+      done()
+    }
 
-    //   //options?.signal?.removeEventListener('abort', onAbort)
+    const onError = (err?: Error) => {
+      log(`WebRTC with failed. Error was: ${err}`)
+      done(err)
+    }
 
-    //   if (err) {
-    //     verbose('Failed', err)
-    //     channel.destroy()
-    //   }
-    // }
+    const done = async (err?: Error) => {
+      verbose('Completed')
 
-    // // const onAbort = () => {
-    // //   channel.destroy()
-    // //   verbose('abort')
-    // // }
+      channel.removeListener('iceTimeout', onTimeout)
+      channel.removeListener('connect', onConnect)
+      channel.removeListener('error', onError)
 
-    // const onConnect = (): void => {
-    //   verbose('connected')
-    //   done()
-    // }
+      signal?.removeEventListener('abort', onAbort)
 
-    // const onError = (err?: Error) => {
-    //   log(`WebRTC with failed. Error was: ${err}`)
-    //   done(err)
-    // }
+      if (err) {
+        verbose('Failed', err)
+        channel.destroy()
+      }
+    }
 
-    // channel.once('error', onError)
-    // channel.once('connect', onConnect)
-    // channel.once('iceTimeout', onTimeout)
+    channel.once('error', onError)
+    channel.once('connect', onConnect)
+    channel.once('iceTimeout', onTimeout)
 
-    // options?.signal?.addEventListener('abort', onAbort)
+    signal?.addEventListener('abort', onAbort)
 
     return channel
   }
