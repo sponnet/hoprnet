@@ -11,11 +11,11 @@ interface PairType<T> {
   source: AsyncGenerator<T, T | void>
 }
 
-const TIMEOUT_LOWER_BOUND = 450
-const TIMEOUT_UPPER_BOUND = 650
-
 // @ts-ignore
 const Pair: <T>() => PairType<T> = require('it-pair')
+
+const TIMEOUT_LOWER_BOUND = 450
+const TIMEOUT_UPPER_BOUND = 650
 
 describe('test relay connection', function () {
   it('should initiate a relayConnection and let the receiver close the connection prematurely', async function () {
