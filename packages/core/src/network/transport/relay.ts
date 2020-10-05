@@ -132,18 +132,17 @@ class Relay {
         webRTC: channel,
       })
 
-      const result = new Promise(resolve => {
+      const result = new Promise((resolve) => {
         channel.on(`connect`, () => {
           console.log(`connection`)
           //conn.close()
           resolve(channel)
         })
-  
+
         channel.on(`error`, () => {
           console.log(`error`)
         })
       })
-      
 
       return conn
     }
@@ -318,10 +317,19 @@ class Relay {
       return
     }
 
-    const deliveryStream = (await this.establishForwarding(counterparty)) as Stream
+    let deliveryStream: Stream
+    try {
+      deliveryStream = (await this.establishForwarding(counterparty)) as Stream
+    } catch (err) {
+      shaker.write(FAIL_COULD_NOT_REACH_COUNTERPARTY)
+
+      shaker.rest()
+
+      error(err)
+      return
+    }
 
     if (deliveryStream == null) {
-      // @TODO end deliveryStream
       shaker.write(FAIL_COULD_NOT_REACH_COUNTERPARTY)
 
       shaker.rest()

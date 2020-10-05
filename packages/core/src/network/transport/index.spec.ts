@@ -278,40 +278,40 @@ describe('should create a socket and connect to it', function () {
   //   ])
   // })
 
-  // it('must not establish a relayed connection to an offline node', async function () {
-  //   const relay = await generateNode({ id: 2, ipv4: true })
+  it('must not establish a relayed connection to an offline node', async function () {
+    const relay = await generateNode({ id: 2, ipv4: true })
 
-  //   const [sender, offlineCounterparty] = await Promise.all([
-  //     generateNode({ id: 0, ipv4: true, useWebRTC: false }, relay.peerInfo),
-  //     generateNode({ id: 1, ipv4: true, useWebRTC: false }, relay.peerInfo),
-  //   ])
+    const [sender, offlineCounterparty] = await Promise.all([
+      generateNode({ id: 0, ipv4: true, useWebRTC: false }, relay.peerInfo),
+      generateNode({ id: 1, ipv4: true, useWebRTC: false }, relay.peerInfo),
+    ])
 
-  //   connectionHelper([sender, relay])
-  //   connectionHelper([relay, offlineCounterparty])
+    connectionHelper([sender, relay])
+    connectionHelper([relay, offlineCounterparty])
 
-  //   await offlineCounterparty.stop()
+    await offlineCounterparty.stop()
 
-  //   let errThrown = false
-  //   const INVALID_PORT = 9999
+    let errThrown = false
+    const INVALID_PORT = 9999
 
-  //   const now = Date.now()
-  //   try {
-  //     await sender.dialProtocol(
-  //       Multiaddr(`/ip4/127.0.0.1/tcp/${INVALID_PORT}/p2p/${offlineCounterparty.peerInfo.id.toB58String()}`),
-  //       TEST_PROTOCOL
-  //     )
-  //   } catch (err) {
-  //     errThrown = true
-  //   }
+    const now = Date.now()
+    try {
+      await sender.dialProtocol(
+        Multiaddr(`/ip4/127.0.0.1/tcp/${INVALID_PORT}/p2p/${offlineCounterparty.peerInfo.id.toB58String()}`),
+        TEST_PROTOCOL
+      )
+    } catch (err) {
+      errThrown = true
+    }
 
-  //   assert(errThrown, `Must throw error in case other node is not reachable`)
+    assert(errThrown, `Must throw error in case other node is not reachable`)
 
-  //   await Promise.all([
-  //     /* prettier-ignore */
-  //     sender.stop(),
-  //     relay.stop(),
-  //   ])
-  // })
+    await Promise.all([
+      /* prettier-ignore */
+      sender.stop(),
+      relay.stop(),
+    ])
+  })
 
   it('should set up a relayed connection and upgrade to WebRTC', async function () {
     const relay = await generateNode({ id: 2, ipv4: true })
@@ -341,7 +341,7 @@ describe('should create a socket and connect to it', function () {
       }
     )
 
-    await new Promise(resolve => setTimeout(resolve, 250))
+    await new Promise((resolve) => setTimeout(resolve, 250))
     stream.close()
     assert(msgReceived, `msg must be received`)
     // await Promise.all([
@@ -593,45 +593,44 @@ describe('should create a socket and connect to it', function () {
   //   ])
   // })
 
-  // it('should set up a relayed connection with p2p Multiaddr and upgrade to WebRTC', async function () {
-  //   const relay = await generateNode({ id: 2, ipv4: true, ipv6: true })
+  it('should set up a relayed connection with p2p Multiaddr and upgrade to WebRTC', async function () {
+    const relay = await generateNode({ id: 2, ipv4: true, ipv6: true })
 
-  //   const [sender, counterparty] = await Promise.all([
-  //     generateNode({ id: 0, ipv4: true }, relay.peerInfo),
-  //     generateNode({ id: 1, ipv6: true }, relay.peerInfo),
-  //   ])
+    const [sender, counterparty] = await Promise.all([
+      generateNode({ id: 0, ipv4: true }, relay.peerInfo),
+      generateNode({ id: 1, ipv6: true }, relay.peerInfo),
+    ])
 
-  //   connectionHelper([sender, relay])
-  //   connectionHelper([relay, counterparty])
+    connectionHelper([sender, relay])
+    connectionHelper([relay, counterparty])
 
-  //   const INVALID_PORT = 8758
-  //   const conn = await sender.dialProtocol(Multiaddr(`/p2p/${counterparty.peerInfo.id.toB58String()}`), TEST_PROTOCOL)
+    const conn = await sender.dialProtocol(Multiaddr(`/p2p/${counterparty.peerInfo.id.toB58String()}`), TEST_PROTOCOL)
 
-  //   let msgReceived = false
-  //   const testMessage = randomBytes(33)
+    let msgReceived = false
+    const testMessage = randomBytes(33)
 
-  //   await pipe(
-  //     /* prettier-ignore */
-  //     [testMessage],
-  //     conn.stream,
-  //     async (source: AsyncIterable<Uint8Array>) => {
-  //       for await (const msg of source) {
-  //         assert(u8aEquals(msg.slice(), testMessage), 'sent message and received message must be identical')
-  //         msgReceived = true
-  //         return
-  //       }
-  //     }
-  //   )
+    await pipe(
+      /* prettier-ignore */
+      [testMessage],
+      conn.stream,
+      async (source: AsyncIterable<Uint8Array>) => {
+        for await (const msg of source) {
+          assert(u8aEquals(msg.slice(), testMessage), 'sent message and received message must be identical')
+          msgReceived = true
+          return
+        }
+      }
+    )
 
-  //   assert(msgReceived, `msg must be received`)
+    assert(msgReceived, `msg must be received`)
 
-  //   await Promise.all([
-  //     /* prettier-ignore */
-  //     sender.stop(),
-  //     counterparty.stop(),
-  //     relay.stop(),
-  //   ])
-  // })
+    await Promise.all([
+      /* prettier-ignore */
+      sender.stop(),
+      counterparty.stop(),
+      relay.stop(),
+    ])
+  })
 
   // it('should set up a relayed connection with p2p Multiaddr with sender that does not support WebRTC', async function () {
   //   jest.setTimeout(15 * 1000)
