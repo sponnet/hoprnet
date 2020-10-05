@@ -44,12 +44,7 @@ class WebRTCConnection implements MultiaddrConnection {
     closed?: number
   }
 
-  constructor(
-    public conn: MultiaddrConnection,
-    private channel: SimplePeer,
-    private self: PeerId,
-    private counterparty: PeerId
-  ) {
+  constructor(public conn: MultiaddrConnection, private channel: SimplePeer, self: PeerId, counterparty: PeerId) {
     this._destroyed = false
     this._switchPromise = Defer<void>()
     this._webRTCStateKnown = false
@@ -146,6 +141,12 @@ class WebRTCConnection implements MultiaddrConnection {
           this._migrated = true
 
           sink(source)
+          setImmediate(() => {
+            this.conn.close().then(() => {
+              console.log(`sink migrated`)
+              this._migrated = true
+            })
+          })
         }
       })
     }
@@ -204,6 +205,12 @@ class WebRTCConnection implements MultiaddrConnection {
       await this._switchPromise.promise
 
       if (this._webRTCAvailable) {
+        setImmediate(() => {
+          this.conn.close().then(() => {
+            this._migrated = true
+            console.log(`source migrated`)
+          })
+        })
         yield* this.channel[Symbol.asyncIterator]()
       } else {
         return
