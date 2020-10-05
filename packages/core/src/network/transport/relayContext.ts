@@ -1,7 +1,7 @@
 import { u8aEquals } from '@hoprnet/hopr-utils'
 import Defer, { DeferredPromise } from 'p-defer'
 
-import { RELAY_PAYLOAD_PREFIX, RELAY_STATUS_PREFIX, STOP } from './constants'
+import { RELAY_STATUS_PREFIX, STOP } from './constants'
 
 class RelayContext {
   private _defer: DeferredPromise<AsyncGenerator<Uint8Array>>
@@ -65,7 +65,7 @@ class RelayContext {
               throw Error(`Invalid status message. Got <${received.slice(1)}>`)
             }
           }
-          
+
           yield (await msg).value
 
           msgReceived = false

@@ -97,7 +97,7 @@ async function main() {
   }
 
   b.source.next().then(foo)
-  a.source.next().then(bar)
+  //a.source.next().then(bar)
 
   //PeerBob.on('signal', (msg: any) => setTimeout(() => PeerAlice.signal(msg), 150))
 

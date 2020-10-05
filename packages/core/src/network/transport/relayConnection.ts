@@ -62,58 +62,140 @@ class RelayConnection implements MultiaddrConnection {
 
     this.webRTC = webRTC
 
-    this.source = async function* (this: RelayConnection) {
-      const promise = this._defer.promise.then(() => ({ done: true }))
+    let streamMsg: Uint8Array
+    let streamDone: boolean = false
+    let streamResolved: boolean = false
 
-      while (true) {
-        let result: {
-          done?: boolean
-          value?: Uint8Array | void
-        } = await Promise.race([
+    let promiseDone = false
+    const promise = this._defer.promise.then(() => {
+      promiseDone = true
+    })
+
+    const sourceTriggered = Defer()
+    let sourceAttached = false
+
+    sourceTriggered.promise.then(() => {
+      sourceAttached = true
+    })
+
+    function streamSourceFunction({ done, value }: { done?: boolean | void; value?: Uint8Array | void }) {
+      streamResolved = true
+
+      if (value != null) {
+        streamMsg = value as Uint8Array
+      }
+
+      if (done) {
+        streamDone = true
+      }
+    }
+
+    let streamPromise = this._stream.source.next().then(streamSourceFunction)
+
+    let queuedMessages: Uint8Array[] = []
+
+    const startSource = async () => {
+      while (!sourceAttached) {
+        await Promise.race([
           // prettier-ignore
-          // @ts-ignore
-          this._stream.source.next(),
+          streamPromise,
+          sourceTriggered.promise,
           promise,
         ])
 
-        if (result.value != null) {
-          const received = (result.value as Uint8Array).slice()
+        if (streamResolved) {
+          streamResolved = false
 
-          if (u8aEquals(received.slice(0, 1), RELAY_PAYLOAD_PREFIX)) {
-            if (result.done) {
-              this._destroyed = true
-              return received.slice(1)
+          if (streamMsg != null) {
+            const received = (streamMsg as Uint8Array).slice()
+
+            if (u8aEquals(received.slice(0, 1), RELAY_PAYLOAD_PREFIX)) {
+              queuedMessages.push(received.slice(1))
+            } else if (u8aEquals(received.slice(0, 1), RELAY_STATUS_PREFIX)) {
+              if (u8aEquals(received.slice(1), STOP)) {
+                this._destroyed = true
+                break
+              } else {
+                error(`Received invalid status message ${received.slice(1)}. Dropping message.`)
+              }
+            } else if (u8aEquals(received.slice(0, 1), RELAY_WEBRTC_PREFIX)) {
+              setImmediate(
+                this.webRTC?.signal.bind(this.webRTC),
+                JSON.parse(new TextDecoder().decode(received.slice(1)))
+              )
             } else {
-              yield received.slice(1)
+              error(`Received invalid prefix <${received.slice(0, 1)}. Dropping message.`)
             }
-          } else if (u8aEquals(received.slice(0, 1), RELAY_STATUS_PREFIX)) {
-            if (u8aEquals(received.slice(1), STOP) || result.done) {
-              this._destroyed = true
-              return
+          }
+
+          streamPromise = this._stream.source.next().then(streamSourceFunction)
+        }
+
+        if (streamDone || promiseDone) {
+          this._destroyed = true
+          break
+        }
+      }
+    }
+
+    const startSourcePromise = startSource()
+
+    this.source = async function* (this: RelayConnection) {
+      sourceTriggered.resolve()
+
+      await startSourcePromise
+
+      if (this.destroyed) {
+        return
+      }
+
+      while (queuedMessages.length > 0) {
+        yield queuedMessages.shift()
+      }
+
+      while (true) {
+        await Promise.race([
+          // prettier-ignore
+          streamPromise,
+          promise,
+        ])
+
+        if (streamResolved) {
+          streamResolved = false
+
+          if (streamMsg != null) {
+            const received = (streamMsg as Uint8Array).slice()
+
+            if (u8aEquals(received.slice(0, 1), RELAY_PAYLOAD_PREFIX)) {
+              if (streamDone || promiseDone) {
+                return received.slice(1)
+              } else {
+                yield received.slice(1)
+              }
+            } else if (u8aEquals(received.slice(0, 1), RELAY_STATUS_PREFIX)) {
+              if (u8aEquals(received.slice(1), STOP)) {
+                this._destroyed = true
+                break
+              } else {
+                error(`Received invalid status message ${received.slice(1)}. Dropping message.`)
+              }
+            } else if (u8aEquals(received.slice(0, 1), RELAY_WEBRTC_PREFIX)) {
+              setImmediate(
+                this.webRTC?.signal.bind(this.webRTC),
+                JSON.parse(new TextDecoder().decode(received.slice(1)))
+              )
             } else {
-              error(`Received invalid status message ${received.slice(1)}. Dropping message.`)
+              error(`Received invalid prefix <${received.slice(0, 1)}. Dropping message.`)
             }
-          } else if (u8aEquals(received.slice(0, 1), RELAY_WEBRTC_PREFIX)) {
-            setImmediate(this.webRTC?.signal.bind(this.webRTC), JSON.parse(new TextDecoder().decode(received.slice(1))))
-          } else {
-            error(`Received invalid prefix <${received.slice(0, 1)}. Dropping message.`)
           }
-        } else if (result.done) {
-          if (!this._destroyed) {
-            // @TODO
-            // if (!this._sinkTriggered) {
-            //   this._stream.sink(
-            //     (async function* () {
-            //       yield (new BL([
-            //         (RELAY_STATUS_PREFIX as unknown) as BL,
-            //         (STOP as unknown) as BL,
-            //       ]) as unknown) as Uint8Array
-            //     })()
-            //   )
-            // }
-            this._destroyed = true
+
+          if (!streamDone && !promiseDone) {
+            streamPromise = this._stream.source.next().then(streamSourceFunction)
           }
-          return
+        }
+
+        if (streamDone || promiseDone) {
+          break
         }
       }
     }.call(this)
@@ -123,7 +205,6 @@ class RelayConnection implements MultiaddrConnection {
         let streamReceived = false
         let attachedSource: AsyncGenerator<Uint8Array, Uint8Array | void>
         const sinkPromise = this._triggerSink.promise.then((_source: AsyncGenerator<Uint8Array, Uint8Array | void>) => {
-          console.log(`sinkPromise`)
           streamReceived = true
           attachedSource = _source
         })
@@ -173,8 +254,6 @@ class RelayConnection implements MultiaddrConnection {
         let streamPromise: Promise<void>
 
         while (true) {
-          // await new Promise((resolve) => setTimeout(resolve, 500))
-
           if (this.webRTC != null && !streamReceived) {
             if (!webRTCDone) {
               await Promise.race([
