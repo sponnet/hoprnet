@@ -117,11 +117,13 @@ describe('test relay connection', function () {
     await new Promise((resolve) => setTimeout(resolve, 50))
 
     assert(
-      (await Promise.all([
-        // prettier-ignore
-        a.source.next(), 
-        b.source.next()
-      ])).every(({ done }) => done),
+      (
+        await Promise.all([
+          // prettier-ignore
+          a.source.next(),
+          b.source.next(),
+        ])
+      ).every(({ done }) => done),
       `Streams must have ended.`
     )
 
