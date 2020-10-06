@@ -3,8 +3,6 @@ import assert from 'assert'
 import { randomInteger } from '@hoprnet/hopr-utils'
 
 import PeerId from 'peer-id'
-import { EventEmitter } from 'events'
-import { Instance as SimplePeer } from 'simple-peer'
 
 interface PairType<T> {
   sink(source: AsyncGenerator<T, T | void>): Promise<void>
@@ -23,6 +21,7 @@ describe('test relay connection', function () {
     const BobAlice = Pair<Uint8Array>()
     const Alice = await PeerId.create({ keyType: 'secp256k1' })
     const Bob = await PeerId.create({ keyType: 'secp256k1' })
+
     const a = new RelayConnection({
       stream: {
         sink: AliceBob.sink,
@@ -57,23 +56,17 @@ describe('test relay connection', function () {
       console.log(new TextDecoder().decode(msg.slice()))
     }
 
-    for await (const msg of a.source) {
-      throw Error(`there should be no message`)
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 50))
-
     assert(
       (
         await Promise.all([
-          // @ts-ignore
+          // prettier-ignore
           a.source.next(),
-          // @ts-ignore
           b.source.next(),
         ])
       ).every(({ done }) => done),
       `Streams must have ended.`
     )
+
     assert(b.destroyed && a.destroyed, `both parties must have marked the connection as destroyed`)
   })
 
@@ -82,6 +75,7 @@ describe('test relay connection', function () {
     const BobAlice = Pair<Uint8Array>()
     const Alice = await PeerId.create({ keyType: 'secp256k1' })
     const Bob = await PeerId.create({ keyType: 'secp256k1' })
+
     const a = new RelayConnection({
       stream: {
         sink: AliceBob.sink,
@@ -105,11 +99,11 @@ describe('test relay connection', function () {
         let i = 0
         while (true) {
           yield new TextEncoder().encode(`message ${i++}`)
-
           await new Promise((resolve) => setTimeout(resolve, 100))
         }
       })()
     )
+
     setTimeout(() => setImmediate(() => a.close()), randomInteger(TIMEOUT_LOWER_BOUND, TIMEOUT_UPPER_BOUND))
 
     for await (const msg of b.source) {
@@ -123,33 +117,22 @@ describe('test relay connection', function () {
     await new Promise((resolve) => setTimeout(resolve, 50))
 
     assert(
-      // @ts-ignore
-      (await Promise.all([a.source.next(), b.source.next()])).every(({ done }) => done),
+      (await Promise.all([
+        // prettier-ignore
+        a.source.next(), 
+        b.source.next()
+      ])).every(({ done }) => done),
       `Streams must have ended.`
     )
+
     assert(b.destroyed && a.destroyed, `both parties must have marked the connection as destroyed`)
   })
 
   it('should initiate a relayConnection and exchange messages and destroy the connection after a random timeout', async function () {
     const AliceBob = Pair<Uint8Array>()
     const BobAlice = Pair<Uint8Array>()
-
     const Alice = await PeerId.create({ keyType: 'secp256k1' })
     const Bob = await PeerId.create({ keyType: 'secp256k1' })
-
-    const FakeWebRTCAlice = new EventEmitter()
-    // @ts-ignore
-    FakeWebRTCAlice.signal = (msg: string) => console.log(`received fancy WebRTC message`, msg)
-
-    const FakeWebRTCBob = new EventEmitter()
-    // @ts-ignore
-    FakeWebRTCBob.signal = (msg: string) => console.log(`received fancy WebRTC message`, msg)
-
-    const interval = setInterval(() => FakeWebRTCAlice.emit(`signal`, { msg: 'Fake signal' }), 50)
-    setTimeout(() => {
-      clearInterval(interval)
-      FakeWebRTCAlice.emit('connect')
-    }, 200)
 
     const a = new RelayConnection({
       stream: {
@@ -158,7 +141,6 @@ describe('test relay connection', function () {
       },
       self: Alice,
       counterparty: Bob,
-      webRTC: FakeWebRTCAlice as SimplePeer,
     })
 
     const b = new RelayConnection({
@@ -168,8 +150,6 @@ describe('test relay connection', function () {
       },
       self: Bob,
       counterparty: Alice,
-      webRTC: FakeWebRTCBob as SimplePeer,
-
     })
 
     a.sink(
@@ -177,7 +157,6 @@ describe('test relay connection', function () {
         let i = 0
         while (true) {
           yield new TextEncoder().encode(`message from a ${i++}`)
-
           await new Promise((resolve) => setTimeout(resolve, 100))
         }
       })()
@@ -187,10 +166,8 @@ describe('test relay connection', function () {
       (async function* () {
         let i = 0
         await new Promise((resolve) => setTimeout(resolve, 50))
-
         while (true) {
           yield new TextEncoder().encode(`message from b ${i++}`)
-
           await new Promise((resolve) => setTimeout(resolve, 100))
         }
       })()
@@ -200,7 +177,6 @@ describe('test relay connection', function () {
 
     let msgAReceived = false
     let msgBReceived = false
-
     let aDone = false
     let bDone = false
 
@@ -220,10 +196,7 @@ describe('test relay connection', function () {
       return { done, value }
     }
 
-    // @ts-ignore
     let msgA = a.source.next().then(aFunction)
-
-    // @ts-ignore
     let msgB = b.source.next().then(bFunction)
 
     while (true) {
@@ -240,36 +213,34 @@ describe('test relay connection', function () {
       } else {
         break
       }
-
       if (msgAReceived || bDone) {
         msgAReceived = false
-
         if (aDone && bDone) {
           break
         } else {
           console.log(new TextDecoder().decode((await msgA).value))
         }
-
-        //@ts-ignore
         msgA = a.source.next().then(aFunction)
       }
-
       if (msgBReceived || aDone) {
         msgBReceived = false
-
         if (aDone && bDone) {
           break
         } else {
           console.log(new TextDecoder().decode((await msgB).value))
         }
-        //@ts-ignore
         msgB = b.source.next().then(bFunction)
       }
     }
 
     assert(
-      // @ts-ignore
-      (await Promise.all([a.source.next(), b.source.next()])).every(({ done }) => done),
+      (
+        await Promise.all([
+          // prettier-ignore
+          a.source.next(),
+          b.source.next(),
+        ])
+      ).every(({ done }) => done),
       `both stream should have ended`
     )
 
