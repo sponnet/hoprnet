@@ -62,7 +62,7 @@ settings includeRecipient true
 
 From now on, every message you send will also be sent with your address. Now when you message the CoverBot, it will know your address and will be able to reply and add you to its database.
 
-![](../.gitbook/assets/include-recipient%20%282%29%20%281%29.png)
+![](../.gitbook/assets/include-recipient%20%282%29%20%282%29.png)
 
 ## Step 4: Register With The Bot
 
@@ -85,3 +85,4 @@ If the CoverBot selects your address, you'll receive a ticket which can be redee
 {% hint style="info" %}
 The more your node is online, the greater your chance of earning tickets, so try to maximize your node uptime.
 {% endhint %}
+
