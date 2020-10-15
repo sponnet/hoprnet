@@ -26,7 +26,7 @@ settings includeRecipient true
 
 From now on, every message you send will also be sent with your address. Now when you message the RandoBot, it will know your address and will be able to reply and add you to its database.
 
-![](../.gitbook/assets/include-recipient%20%281%29.png)
+![](../.gitbook/assets/include-recipient%20%283%29.png)
 
 To turn this off, type:
 
@@ -81,7 +81,7 @@ If successful, RandoBot will pick a series of random words and say those to you.
 ---------- New Packet ----------
 Destination    : 16Uiu2HAm17N3psi92XKnRex8mbWJVoqafzJa6fhVN4zHmoLMt15A
 --------------------------------
-> 
+>
 ===== New message ======
 Message: 16Uiu2HAm17N3psi92XKnRex8mbWJVoqafzJa6fhVN4zHmoLMt15A slimy olden dove
 Latency: 63 ms
